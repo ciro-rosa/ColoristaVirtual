@@ -44,13 +44,13 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <div className="text-blue-700 mr-2">
+            <div className="text-primary-600 mr-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 16.5v-9l6 4.5-6 4.5z"></path>
                 <rect width="20" height="20" x="2" y="2" rx="2.18" ry="2.18"></rect>
               </svg>
             </div>
-            <span className="font-bold text-xl text-blue-900">De Sírius</span>
+            <span className="font-bold text-xl text-primary-900">De Sírius</span>
           </Link>
           
           {/* Desktop Navigation */}
@@ -61,8 +61,8 @@ const Header: React.FC = () => {
                 to={item.path}
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
                   isActive(item.path)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'
                 }`}
               >
                 <span className="mr-1.5">{item.icon}</span>
@@ -119,7 +119,7 @@ const Header: React.FC = () => {
           <div className="md:hidden">
             <button
               type="button"
-              className="p-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+              className="p-2 rounded-md text-gray-700 hover:bg-primary-50 hover:text-primary-700"
               onClick={toggleMenu}
             >
               <span className="sr-only">Abrir menu</span>
@@ -150,8 +150,8 @@ const Header: React.FC = () => {
                   to={item.path}
                   className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${
                     isActive(item.path)
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'
                   }`}
                   onClick={closeMenu}
                 >
@@ -164,7 +164,7 @@ const Header: React.FC = () => {
                 <>
                   <Link
                     to="/perfil"
-                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-700"
                     onClick={closeMenu}
                   >
                     <User className="mr-2 h-5 w-5" />
@@ -172,7 +172,7 @@ const Header: React.FC = () => {
                   </Link>
                   <Link
                     to="/minhas-medalhas"
-                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-700"
                     onClick={closeMenu}
                   >
                     <Award className="mr-2 h-5 w-5" />
@@ -180,7 +180,7 @@ const Header: React.FC = () => {
                   </Link>
                   <button
                     type="button"
-                    className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-700"
                     onClick={handleLogout}
                   >
                     <LogOut className="mr-2 h-5 w-5" />

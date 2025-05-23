@@ -26,14 +26,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     ...props 
   }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
+    const baseStyles = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
     
     const variants = {
-      primary: 'bg-blue-600 text-white hover:bg-blue-700',
-      secondary: 'bg-blue-100 text-blue-900 hover:bg-blue-200',
-      outline: 'border border-blue-200 bg-white hover:bg-blue-50 text-blue-700',
-      ghost: 'hover:bg-blue-100 hover:text-blue-900 text-blue-700',
-      link: 'text-blue-600 underline-offset-4 hover:underline p-0 h-auto',
+      primary: 'bg-primary-600 text-white hover:bg-primary-700',
+      secondary: 'bg-primary-100 text-primary-900 hover:bg-primary-200',
+      outline: 'border border-primary-200 bg-white hover:bg-primary-50 text-primary-700',
+      ghost: 'hover:bg-primary-100 hover:text-primary-900 text-primary-700',
+      link: 'text-primary-600 underline-offset-4 hover:underline p-0 h-auto',
       danger: 'bg-red-600 text-white hover:bg-red-700',
     };
     
