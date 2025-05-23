@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { User } from '../types';
-import { mockUsers } from '../lib/mock-data';
-import { simulateAIProcessing } from '../lib/utils';
+import { supabase } from '../lib/supabase';
+import type { User } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -12,7 +11,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (name: string, email: string, phone: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
@@ -26,100 +25,130 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Simulação de API call
-      const response = await simulateAIProcessing<User | undefined>(
-        mockUsers.find(user => user.email === email)
-      );
-      
-      if (!response) {
-        throw new Error('Usuário ou senha incorretos');
-      }
-      
-      set({ 
-        user: response, 
-        isAuthenticated: true, 
-        isLoading: false 
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (userError) throw userError;
+        
+        set({ 
+          user: userData,
+          isAuthenticated: true,
+          isLoading: false 
+        });
+      }
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Erro durante login', 
         isLoading: false 
       });
+      throw error;
     }
   },
   
   loginWithGoogle: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Simulação de login Google
-      const response = await simulateAIProcessing<User>(mockUsers[0]);
-      
-      set({ 
-        user: response, 
-        isAuthenticated: true, 
-        isLoading: false 
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
+      
+      if (error) throw error;
+      
+      // User data will be handled by the auth state change listener
+      set({ isLoading: false });
+      
+      return data;
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Erro durante login com Google', 
         isLoading: false 
       });
+      throw error;
     }
   },
   
   register: async (name: string, email: string, phone: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Verificar se o e-mail já existe
-      const existingUser = mockUsers.find(user => user.email === email);
-      if (existingUser) {
-        throw new Error('Este e-mail já está registrado');
-      }
-      
-      // Simulação de registro
-      const newUser: User = {
-        id: `${mockUsers.length + 1}`,
-        name,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        phone,
-        points: 0,
-        badges: [],
-        createdAt: new Date(),
-      };
-      
-      await simulateAIProcessing<void>(null);
-      
-      set({ 
-        user: newUser, 
-        isAuthenticated: true, 
-        isLoading: false 
+        password,
+        options: {
+          data: {
+            name,
+            phone,
+          },
+        },
       });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (userError) throw userError;
+        
+        set({ 
+          user: userData,
+          isAuthenticated: true,
+          isLoading: false 
+        });
+      }
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Erro durante o registro', 
         isLoading: false 
       });
+      throw error;
     }
   },
   
-  logout: () => {
-    set({ 
-      user: null, 
-      isAuthenticated: false 
-    });
+  logout: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      set({ 
+        user: null, 
+        isAuthenticated: false,
+        isLoading: false 
+      });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Erro durante logout', 
+        isLoading: false 
+      });
+      throw error;
+    }
   },
   
   forgotPassword: async (email: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Verificar se o e-mail existe
-      const existingUser = mockUsers.find(user => user.email === email);
-      if (!existingUser) {
-        throw new Error('E-mail não encontrado');
-      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/redefinir-senha`,
+      });
       
-      // Simulação de envio de e-mail
-      await simulateAIProcessing<void>(null);
+      if (error) throw error;
       
       set({ isLoading: false });
     } catch (error) {
@@ -127,14 +156,18 @@ export const useAuthStore = create<AuthState>((set) => ({
         error: error instanceof Error ? error.message : 'Erro ao processar recuperação de senha', 
         isLoading: false 
       });
+      throw error;
     }
   },
   
   resetPassword: async (token: string, newPassword: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Simulação de reset de senha
-      await simulateAIProcessing<void>(null);
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      
+      if (error) throw error;
       
       set({ isLoading: false });
     } catch (error) {
@@ -142,6 +175,30 @@ export const useAuthStore = create<AuthState>((set) => ({
         error: error instanceof Error ? error.message : 'Erro ao redefinir senha', 
         isLoading: false 
       });
+      throw error;
     }
   },
 }));
+
+// Set up auth state change listener
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session?.user) {
+    const { data: userData, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (!error && userData) {
+      useAuthStore.setState({ 
+        user: userData,
+        isAuthenticated: true 
+      });
+    }
+  } else if (event === 'SIGNED_OUT') {
+    useAuthStore.setState({ 
+      user: null,
+      isAuthenticated: false 
+    });
+  }
+});
