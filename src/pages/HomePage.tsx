@@ -9,15 +9,15 @@ import CallToAction from '../components/home/CallToAction';
 
 const HomePage: React.FC = () => {
   return (
-    <div>
+    <main className="min-h-screen">
       <Hero />
       <Features />
       <CommunityResults />
-      <ProductLines />
       <CompanyStory />
+      <ProductLines />
       <Testimonials />
       <CallToAction />
-    </div>
+    </main>
   );
 };
 
