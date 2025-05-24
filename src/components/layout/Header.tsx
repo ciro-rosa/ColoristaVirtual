@@ -135,7 +135,20 @@ const Header: React.FC = () => {
                     className="mr-2"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {user.name?.split(' ')[0] || user.email?.split('@')[0] || 'Perfil'}
+                    {(() => {
+                      try {
+                        if (user?.name && typeof user.name === 'string' && user.name.length > 0) {
+                          return user.name.split(' ')[0];
+                        }
+                        if (user?.email && typeof user.email === 'string' && user.email.includes('@')) {
+                          return user.email.split('@')[0];
+                        }
+                        return 'Perfil';
+                      } catch (error) {
+                        console.warn('Erro ao processar nome do usuário:', error);
+                        return 'Perfil';
+                      }
+                    })()}
                   </span>
                 </Link>
                 <Button

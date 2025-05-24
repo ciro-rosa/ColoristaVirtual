@@ -249,7 +249,8 @@ const setupAuthListener = () => {
     
     const currentState = useAuthStore.getState();
     
-    if (event === 'SIGNED_IN' && session?.user) {
+    // ✅ CORREÇÃO: Evitar loop infinito - só processar se não estiver já autenticado
+    if (event === 'SIGNED_IN' && session?.user && !currentState.isAuthenticated) {
       console.log('Usuário logado, buscando dados...');
       
       try {
