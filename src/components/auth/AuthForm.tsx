@@ -18,12 +18,27 @@ const AuthForm = () => {
     }
   }, [session, navigate, location]);
 
+  // Listen for auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        navigate('/dashboard', { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
+  }
+
+  if (session) {
+    return null;
   }
 
   return (

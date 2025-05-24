@@ -36,13 +36,8 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
     return () => subscription.unsubscribe();
   }, []);
 
-  const value = {
-    session,
-    loading,
-  };
-
   return (
-    <SessionContext.Provider value={value}>
+    <SessionContext.Provider value={{ session, loading }}>
       {children}
     </SessionContext.Provider>
   );
