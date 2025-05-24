@@ -30,13 +30,19 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const value = {
+    session,
+    loading,
+  };
+
   return (
-    <SessionContext.Provider value={{ session, loading }}>
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );

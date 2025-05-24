@@ -8,7 +8,7 @@ import { useSession } from './SessionProvider';
 const AuthForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session } = useSession();
+  const { session, loading } = useSession();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -18,20 +18,13 @@ const AuthForm = () => {
     }
   }, [session, navigate, location]);
 
-  // Handle auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        // Add a small delay to ensure user profile is created
-        setTimeout(() => {
-          const from = location.state?.from?.pathname || '/dashboard';
-          navigate(from, { replace: true });
-        }, 500);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, location]);
+  if (loading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
@@ -108,6 +101,8 @@ const AuthForm = () => {
             },
           }}
           redirectTo={`${window.location.origin}/dashboard`}
+          onlyThirdPartyProviders={false}
+          magicLink={false}
         />
       </div>
     </div>
