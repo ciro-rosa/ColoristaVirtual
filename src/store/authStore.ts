@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       if (authUser) {
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('user_profiles')
           .select('*')
           .eq('id', authUser.id)
           .single();
@@ -107,7 +107,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       // Get the created user data
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
@@ -197,7 +197,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session?.user) {
     const { data: userData, error } = await supabase
-      .from('users')
+      .from('user_profiles')
       .select('*')
       .eq('id', session.user.id)
       .single();
