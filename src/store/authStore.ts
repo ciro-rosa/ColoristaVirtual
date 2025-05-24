@@ -163,7 +163,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const fallbackUser = {
               id: session.user.id,
               email: session.user.email || '',
-              name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
               phone: session.user.user_metadata?.phone || null,
               created_at: new Date().toISOString(),
               last_login: new Date().toISOString(),
@@ -199,7 +199,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const emergencyUser = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
             phone: null,
             created_at: new Date().toISOString(),
             last_login: new Date().toISOString(),
@@ -281,7 +281,7 @@ const setupAuthListener = () => {
           const fallbackUser = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
             phone: session.user.user_metadata?.phone || null,
             created_at: new Date().toISOString(),
             last_login: new Date().toISOString(),
@@ -320,7 +320,7 @@ const setupAuthListener = () => {
         const emergencyUser = {
           id: session.user.id,
           email: session.user.email || '',
-          name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
           phone: null,
           created_at: new Date().toISOString(),
           last_login: new Date().toISOString(),
