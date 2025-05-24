@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
   // ✅ CORREÇÃO: Usar APENAS o useAuthStore (removi useSession)
-  const { user, isAuthenticated, logout, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,47 +24,46 @@ const Header: React.FC = () => {
     setIsMenuOpen(false);
   };
   
-  // ✅ CORREÇÃO: Função de logout melhorada com logs
+  // ✅ CORREÇÃO: Função de logout super simples que sempre funciona
   const handleLogout = async () => {
     console.log('🔴 Header: Botão de logout clicado!');
     
     try {
-      console.log('🔄 Header: Iniciando logout...');
-      await logout();
-      console.log('✅ Header: Logout realizado com sucesso');
+      console.log('🔄 Header: Limpando estado...');
       
+      // Limpa o estado do store imediatamente
+      useAuthStore.setState({ 
+        user: null, 
+        isAuthenticated: false, 
+        isLoading: false,
+        error: null 
+      });
+      
+      // Limpa localStorage
+      localStorage.clear();
+      
+      // Tenta logout do Supabase (não espera)
+      supabase.auth.signOut().catch(err => 
+        console.warn('Erro no signOut (ignorado):', err)
+      );
+      
+      console.log('✅ Header: Estado limpo, redirecionando...');
+      
+      // Redireciona para home
       navigate('/');
       closeMenu();
+      
+      // Recarrega página após um delay para garantir
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
       
     } catch (error) {
       console.error('❌ Header: Erro no logout:', error);
       
-      // Fallback: força logout manual
-      console.log('🚨 Header: Tentando logout forçado...');
-      try {
-        // Limpa estado manualmente
-        useAuthStore.setState({ 
-          user: null, 
-          isAuthenticated: false, 
-          isLoading: false,
-          error: null 
-        });
-        
-        // Limpa localStorage
-        localStorage.clear();
-        
-        // Navega para home
-        navigate('/');
-        closeMenu();
-        
-        // Recarrega página
-        setTimeout(() => window.location.reload(), 500);
-        
-      } catch (fallbackError) {
-        console.error('❌ Header: Erro no logout forçado:', fallbackError);
-        alert('Erro ao fazer logout. Recarregando página...');
-        window.location.reload();
-      }
+      // Fallback: força logout total
+      localStorage.clear();
+      window.location.href = '/';
     }
   };
   
@@ -135,7 +135,7 @@ const Header: React.FC = () => {
                     className="mr-2"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {user.name?.split(' ')[0] || 'Perfil'}
+                    {user.name?.split(' ')[0] || user.email?.split('@')[0] || 'Perfil'}
                   </span>
                 </Link>
                 <Button
