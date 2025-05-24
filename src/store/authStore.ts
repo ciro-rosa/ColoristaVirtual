@@ -23,10 +23,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      // Clear all auth state
       set({ 
         user: null, 
         isAuthenticated: false,
-        isLoading: false 
+        isLoading: false,
+        error: null
       });
     } catch (error) {
       set({ 
@@ -50,13 +52,15 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     if (!error && userData) {
       useAuthStore.setState({ 
         user: userData,
-        isAuthenticated: true 
+        isAuthenticated: true,
+        error: null
       });
     }
   } else if (event === 'SIGNED_OUT') {
     useAuthStore.setState({ 
       user: null,
-      isAuthenticated: false 
+      isAuthenticated: false,
+      error: null
     });
   }
 });
