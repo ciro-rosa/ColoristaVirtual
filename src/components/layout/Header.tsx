@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
 import { useSession } from '../auth/SessionProvider';
-import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { session } = useSession();
+  const { logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -23,9 +24,7 @@ const Header: React.FC = () => {
   
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      await logout();
       navigate('/');
       closeMenu();
     } catch (error) {
