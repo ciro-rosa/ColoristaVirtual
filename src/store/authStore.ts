@@ -25,18 +25,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data: { user: authUser }, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (authError) throw authError;
       
-      if (data.user) {
+      if (authUser) {
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
-          .eq('id', data.user.id)
+          .eq('id', authUser.id)
           .single();
           
         if (userError) throw userError;
@@ -84,7 +84,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (name: string, email: string, phone: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Sign up with Supabase Auth
+      const { data: { user: authUser }, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -95,27 +96,39 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
       });
       
-      if (error) throw error;
+      if (signUpError) throw signUpError;
       
-      if (data.user) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (userError) throw userError;
-        
-        set({ 
-          user: userData,
-          isAuthenticated: true,
-          isLoading: false 
-        });
+      if (!authUser) {
+        throw new Error('Erro ao criar usuário');
       }
+      
+      // Wait for the trigger to create the user record
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get the created user data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+        
+      if (userError) throw userError;
+      
+      if (!userData) {
+        throw new Error('Erro ao recuperar dados do usuário');
+      }
+      
+      set({ 
+        user: userData,
+        isAuthenticated: true,
+        isLoading: false 
+      });
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : 'Erro durante o registro', 
-        isLoading: false 
+        isLoading: false,
+        user: null,
+        isAuthenticated: false
       });
       throw error;
     }
