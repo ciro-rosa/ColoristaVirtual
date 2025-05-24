@@ -46,14 +46,44 @@ const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
   const { getBadges } = useUserStore();
   
-  const badges = getBadges();
-  const recentBadges = user?.badges.slice(0, 3) || [];
+  // ✅ CORREÇÃO: Função segura para pegar o primeiro nome
+  const getFirstName = (): string => {
+    try {
+      if (user?.name && typeof user.name === 'string' && user.name.trim()) {
+        const names = user.name.trim().split(' ');
+        return names[0] || 'Usuário';
+      }
+      if (user?.email && typeof user.email === 'string' && user.email.includes('@')) {
+        return user.email.split('@')[0] || 'Usuário';
+      }
+      return 'Usuário';
+    } catch (error) {
+      console.warn('Erro ao processar nome do usuário:', error);
+      return 'Usuário';
+    }
+  };
+
+  // ✅ CORREÇÃO: Função segura para pegar badges recentes
+  const getRecentBadges = () => {
+    try {
+      const badges = getBadges();
+      if (user?.badges && Array.isArray(user.badges) && user.badges.length > 0) {
+        return user.badges.slice(0, 3);
+      }
+      return [];
+    } catch (error) {
+      console.warn('Erro ao processar badges:', error);
+      return [];
+    }
+  };
+
+  const recentBadges = getRecentBadges();
   
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-blue-900 mb-2">
-          Olá, {user?.name.split(' ')[0]}!
+          Olá, {getFirstName()}!
         </h1>
         <p className="text-gray-600">
           Bem-vindo(a) ao seu dashboard. Acesse as ferramentas e acompanhe seu progresso.
@@ -73,7 +103,9 @@ const DashboardPage: React.FC = () => {
             <CardContent>
               <div className="flex items-center">
                 <Award className="h-8 w-8 text-yellow-500 mr-3" />
-                <span className="text-3xl font-bold text-blue-900">{user?.points || 0}</span>
+                <span className="text-3xl font-bold text-blue-900">
+                  {user?.points || user?.total_points || 0}
+                </span>
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 Ganhe pontos usando ferramentas e compartilhando transformações.
@@ -95,13 +127,13 @@ const DashboardPage: React.FC = () => {
             <CardContent>
               {recentBadges.length > 0 ? (
                 <div className="flex flex-wrap gap-3">
-                  {recentBadges.map((badge) => (
+                  {recentBadges.map((badge, index) => (
                     <Badge 
-                      key={badge.id} 
+                      key={badge.id || index} 
                       variant="primary"
                       className="px-3 py-1 text-xs font-medium"
                     >
-                      {badge.name} • {formatDate(badge.earnedAt)}
+                      {badge.name || 'Medalha'} • {badge.earnedAt ? formatDate(badge.earnedAt) : 'Recente'}
                     </Badge>
                   ))}
                 </div>
@@ -110,7 +142,7 @@ const DashboardPage: React.FC = () => {
                   Você ainda não possui medalhas. Use as ferramentas para ganhar.
                 </div>
               )}
-              {user?.badges.length > 0 && (
+              {user?.badges && Array.isArray(user.badges) && user.badges.length > 0 && (
                 <Button
                   variant="link"
                   className="mt-2 h-auto p-0"
@@ -181,6 +213,37 @@ const DashboardPage: React.FC = () => {
           onClick={() => navigate('/colorista')}
         >
           Consultar Colorista Virtual
+        </Button>
+      </div>
+
+      {/* ✅ ADICIONADO: Botão de logout para teste */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-red-800 mb-2">🔴 Teste de Logout</h3>
+        <p className="text-red-700 mb-4">
+          Clique no botão abaixo para testar se o logout está funcionando:
+        </p>
+        <Button 
+          variant="outline"
+          onClick={() => {
+            console.log('🔴 Dashboard: Logout clicado!');
+            try {
+              useAuthStore.setState({ 
+                user: null, 
+                isAuthenticated: false, 
+                isLoading: false,
+                error: null 
+              });
+              localStorage.clear();
+              window.location.href = '/';
+            } catch (error) {
+              console.error('Erro no logout:', error);
+              localStorage.clear();
+              window.location.reload();
+            }
+          }}
+          className="bg-red-500 hover:bg-red-600 text-white border-red-500"
+        >
+          🚪 Testar Logout
         </Button>
       </div>
     </div>
