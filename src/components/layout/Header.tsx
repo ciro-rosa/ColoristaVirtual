@@ -22,9 +22,13 @@ const Header: React.FC = () => {
   };
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-    closeMenu();
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+      closeMenu();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
   
   const isActive = (path: string) => {
