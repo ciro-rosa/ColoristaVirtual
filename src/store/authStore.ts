@@ -20,19 +20,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   
   logout: async () => {
     set({ isLoading: true, error: null });
+    
     try {
       console.log('Iniciando logout...');
       
-      // Chama o signOut do Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Erro no Supabase signOut:', error);
-        throw error;
+      // Timeout para evitar travamento
+      const logoutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout no logout')), 10000)
+      );
+      
+      // Tenta fazer logout com timeout de 10 segundos
+      const result = await Promise.race([logoutPromise, timeoutPromise]) as any;
+      
+      if (result?.error) {
+        console.warn('Erro no Supabase signOut:', result.error);
+        // Não vamos parar por causa do erro, vamos limpar o estado mesmo assim
       }
       
-      console.log('SignOut do Supabase realizado com sucesso');
+      console.log('SignOut do Supabase realizado (ou timeout)');
       
-      // Limpa o estado imediatamente (não espera o listener)
+      // Limpa o estado local SEMPRE (mesmo se houve erro no Supabase)
       set({ 
         user: null, 
         isAuthenticated: false,
@@ -40,15 +48,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null
       });
       
+      // Limpa dados do localStorage como backup
+      try {
+        const authKeys = Object.keys(localStorage).filter(key => 
+          key.includes('supabase') || key.includes('sb-')
+        );
+        authKeys.forEach(key => {
+          console.log('Removendo chave do localStorage:', key);
+          localStorage.removeItem(key);
+        });
+      } catch (storageError) {
+        console.warn('Erro ao limpar localStorage:', storageError);
+      }
+      
       console.log('Estado limpo com sucesso');
+      
+      // Força recarregamento da página como fallback
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (error) {
       console.error('Erro durante logout:', error);
+      
+      // Mesmo com erro, limpa o estado local
       set({ 
-        error: error instanceof Error ? error.message : 'Erro durante logout', 
-        isLoading: false 
+        user: null, 
+        isAuthenticated: false,
+        isLoading: false,
+        error: null
       });
-      throw error;
+      
+      console.log('Estado limpo após erro');
+      
+      // Força recarregamento como último recurso
+      setTimeout(() => {
+        console.log('Forçando recarregamento após erro...');
+        window.location.reload();
+      }, 1000);
     }
   },
 
