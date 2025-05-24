@@ -9,6 +9,7 @@ interface AuthState {
   isAuthenticated: boolean;
   
   logout: () => Promise<void>;
+  forceLogout: () => void; // Método de emergência
   checkSession: () => Promise<void>;
 }
 
@@ -89,6 +90,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // MÉTODO DE EMERGÊNCIA - Use se o logout normal não funcionar
+  forceLogout: () => {
+    console.log('🚨 LOGOUT FORÇADO ATIVADO');
+    
+    // Limpa estado imediatamente
+    set({ 
+      user: null, 
+      isAuthenticated: false,
+      isLoading: false,
+      error: null
+    });
+    
+    // Limpa TUDO do localStorage
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('Storage limpo completamente');
+    } catch (error) {
+      console.warn('Erro ao limpar storage:', error);
+    }
+    
+    // Tenta logout silencioso (sem esperar)
+    supabase.auth.signOut().catch(err => 
+      console.warn('Erro no signOut silencioso:', err)
+    );
+    
+    // Recarrega a página
+    window.location.href = window.location.origin;
+  },
+
   // Função para verificar sessão inicial
   checkSession: async () => {
     try {
@@ -104,26 +135,85 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (session?.user) {
         // Usuário está logado, buscar dados do banco
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        try {
+          const userDataPromise = supabase
+            .from('user_profiles')  // ✅ CORREÇÃO: Tabela correta
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout na busca do usuário')), 5000)
+          );
           
-        if (!userError && userData) {
+          const { data: userData, error: userError } = await Promise.race([userDataPromise, timeoutPromise]) as any;
+          
+          if (!userError && userData) {
+            console.log('✅ Dados do usuário carregados na verificação:', userData);
+            set({ 
+              user: userData,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null
+            });
+          } else {
+            console.warn('⚠️ Erro/timeout na verificação, usando dados temporários:', userError);
+            
+            // FALLBACK: Criar usuário temporário com dados da sessão
+            const fallbackUser = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+              phone: session.user.user_metadata?.phone || null,
+              created_at: new Date().toISOString(),
+              last_login: new Date().toISOString(),
+              auth_provider: 'google',
+              total_points: 0,
+              total_tokens_used: 0,
+              avatar_url: session.user.user_metadata?.avatar_url || null
+            };
+            
+            set({ 
+              user: fallbackUser,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null
+            });
+            
+            // Tentar criar usuário no banco assincronamente
+            supabase
+              .from('user_profiles')  // ✅ CORREÇÃO: Tabela correta
+              .upsert(fallbackUser, { onConflict: 'id' })
+              .then(({ error: upsertError }) => {
+                if (upsertError) {
+                  console.warn('Erro ao criar usuário no banco durante verificação:', upsertError);
+                } else {
+                  console.log('✅ Usuário criado/atualizado no banco durante verificação');
+                }
+              });
+          }
+        } catch (error) {
+          console.error('❌ Erro na verificação de usuário:', error);
+          
+          // FALLBACK FINAL: dados básicos da sessão
+          const emergencyUser = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+            phone: null,
+            created_at: new Date().toISOString(),
+            last_login: new Date().toISOString(),
+            auth_provider: 'google',
+            total_points: 0,
+            total_tokens_used: 0,
+            avatar_url: session.user.user_metadata?.avatar_url || null
+          };
+          
           set({ 
-            user: userData,
+            user: emergencyUser,
             isAuthenticated: true,
             isLoading: false,
             error: null
-          });
-        } else {
-          console.error('Erro ao buscar dados do usuário:', userError);
-          set({ 
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: 'Erro ao carregar dados do usuário'
           });
         }
       } else {
@@ -163,14 +253,21 @@ const setupAuthListener = () => {
       console.log('Usuário logado, buscando dados...');
       
       try {
-        const { data: userData, error } = await supabase
-          .from('users')
+        // Timeout para evitar travamento na busca do usuário
+        const userDataPromise = supabase
+          .from('user_profiles')  // ✅ CORREÇÃO: Tabela correta
           .select('*')
           .eq('id', session.user.id)
           .single();
           
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout na busca do usuário')), 5000)
+        );
+        
+        const { data: userData, error } = await Promise.race([userDataPromise, timeoutPromise]) as any;
+          
         if (!error && userData) {
-          console.log('Dados do usuário carregados:', userData);
+          console.log('✅ Dados do usuário carregados:', userData);
           useAuthStore.setState({ 
             user: userData,
             isAuthenticated: true,
@@ -178,19 +275,68 @@ const setupAuthListener = () => {
             error: null
           });
         } else {
-          console.error('Erro ao buscar dados do usuário:', error);
+          console.warn('⚠️ Erro/timeout ao buscar dados do usuário:', error);
+          
+          // FALLBACK: Criar usuário temporário com dados do Google
+          const fallbackUser = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+            phone: session.user.user_metadata?.phone || null,
+            created_at: new Date().toISOString(),
+            last_login: new Date().toISOString(),
+            auth_provider: 'google',
+            total_points: 0,
+            total_tokens_used: 0,
+            avatar_url: session.user.user_metadata?.avatar_url || null
+          };
+          
+          console.log('🔄 Usando dados temporários do Google:', fallbackUser);
+          
+          // Tentar criar usuário no banco de forma assíncrona (não espera)
+          supabase
+            .from('user_profiles')  // ✅ CORREÇÃO: Tabela correta
+            .upsert(fallbackUser, { onConflict: 'id' })
+            .then(({ error: upsertError }) => {
+              if (upsertError) {
+                console.warn('Erro ao criar usuário no banco:', upsertError);
+              } else {
+                console.log('✅ Usuário criado/atualizado no banco');
+              }
+            });
+          
+          // Define estado com dados temporários
           useAuthStore.setState({ 
-            user: null,
-            isAuthenticated: false,
+            user: fallbackUser,
+            isAuthenticated: true,
             isLoading: false,
-            error: 'Erro ao carregar dados do usuário'
+            error: null
           });
         }
       } catch (error) {
-        console.error('Erro ao processar login:', error);
+        console.error('❌ Erro ao processar login:', error);
+        
+        // FALLBACK FINAL: Usar dados básicos do Google mesmo com erro
+        const emergencyUser = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || session.user.email || 'Usuário',
+          phone: null,
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+          auth_provider: 'google',
+          total_points: 0,
+          total_tokens_used: 0,
+          avatar_url: session.user.user_metadata?.avatar_url || null
+        };
+        
+        console.log('🚨 Usando dados de emergência:', emergencyUser);
+        
         useAuthStore.setState({ 
+          user: emergencyUser,
+          isAuthenticated: true,
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Erro desconhecido'
+          error: null
         });
       }
       
@@ -212,7 +358,7 @@ const setupAuthListener = () => {
       // Recarregar dados do usuário se necessário
       if (session?.user && currentState.isAuthenticated) {
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('user_profiles')  // ✅ CORREÇÃO: Tabela correta também aqui
           .select('*')
           .eq('id', session.user.id)
           .single();
