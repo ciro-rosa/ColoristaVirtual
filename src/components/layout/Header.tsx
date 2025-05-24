@@ -4,13 +4,14 @@ import { Menu, X, User, LogOut, Award, Home, Palette, FlaskConical, Image, BarCh
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
-import { useSession } from '../auth/SessionProvider';
 import { useAuthStore } from '../../store/authStore';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { session } = useSession();
-  const { logout } = useAuthStore();
+  
+  // ✅ CORREÇÃO: Usar APENAS o useAuthStore (removi useSession)
+  const { user, isAuthenticated, logout, isLoading } = useAuthStore();
+  
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -22,13 +23,47 @@ const Header: React.FC = () => {
     setIsMenuOpen(false);
   };
   
+  // ✅ CORREÇÃO: Função de logout melhorada com logs
   const handleLogout = async () => {
+    console.log('🔴 Header: Botão de logout clicado!');
+    
     try {
+      console.log('🔄 Header: Iniciando logout...');
       await logout();
+      console.log('✅ Header: Logout realizado com sucesso');
+      
       navigate('/');
       closeMenu();
+      
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('❌ Header: Erro no logout:', error);
+      
+      // Fallback: força logout manual
+      console.log('🚨 Header: Tentando logout forçado...');
+      try {
+        // Limpa estado manualmente
+        useAuthStore.setState({ 
+          user: null, 
+          isAuthenticated: false, 
+          isLoading: false,
+          error: null 
+        });
+        
+        // Limpa localStorage
+        localStorage.clear();
+        
+        // Navega para home
+        navigate('/');
+        closeMenu();
+        
+        // Recarrega página
+        setTimeout(() => window.location.reload(), 500);
+        
+      } catch (fallbackError) {
+        console.error('❌ Header: Erro no logout forçado:', fallbackError);
+        alert('Erro ao fazer logout. Recarregando página...');
+        window.location.reload();
+      }
     }
   };
   
@@ -43,6 +78,16 @@ const Header: React.FC = () => {
     { path: '/galeria', label: 'Galeria', icon: <Image size={18} /> },
     { path: '/ranking', label: 'Ranking', icon: <BarChart3 size={18} /> },
   ];
+  
+  // ✅ CORREÇÃO: Criar objeto session compatível a partir do user do store
+  const sessionUser = user ? {
+    id: user.id,
+    email: user.email,
+    user_metadata: {
+      full_name: user.name,
+      avatar_url: user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&background=22c55e&color=fff`
+    }
+  } : null;
   
   return (
     <header className="bg-white shadow-sm sticky top-0 z-40">
@@ -79,17 +124,18 @@ const Header: React.FC = () => {
           
           {/* User Menu or Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {session ? (
+            {/* ✅ CORREÇÃO: Usar isAuthenticated ao invés de session */}
+            {isAuthenticated && user ? (
               <div className="flex items-center space-x-4">
                 <Link to="/perfil" className="flex items-center">
                   <Avatar
-                    src={session.user?.user_metadata?.avatar_url}
-                    name={session.user?.user_metadata?.full_name || session.user?.email}
+                    src={sessionUser?.user_metadata?.avatar_url}
+                    name={sessionUser?.user_metadata?.full_name || user.email}
                     size="sm"
                     className="mr-2"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {session.user?.user_metadata?.full_name?.split(' ')[0] || 'Perfil'}
+                    {user.name?.split(' ')[0] || 'Perfil'}
                   </span>
                 </Link>
                 <Button
@@ -97,8 +143,9 @@ const Header: React.FC = () => {
                   size="sm"
                   onClick={handleLogout}
                   leftIcon={<LogOut size={16} />}
+                  disabled={isLoading}
                 >
-                  Sair
+                  {isLoading ? 'Saindo...' : 'Sair'}
                 </Button>
               </div>
             ) : (
@@ -166,7 +213,8 @@ const Header: React.FC = () => {
                 </Link>
               ))}
               
-              {session ? (
+              {/* ✅ CORREÇÃO: Usar isAuthenticated ao invés de session */}
+              {isAuthenticated && user ? (
                 <>
                   <Link
                     to="/perfil"
@@ -186,11 +234,16 @@ const Header: React.FC = () => {
                   </Link>
                   <button
                     type="button"
-                    className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-primary-50 hover:text-primary-700"
+                    className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium ${
+                      isLoading 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'
+                    }`}
                     onClick={handleLogout}
+                    disabled={isLoading}
                   >
                     <LogOut className="mr-2 h-5 w-5" />
-                    Sair
+                    {isLoading ? 'Saindo...' : 'Sair'}
                   </button>
                 </>
               ) : (
