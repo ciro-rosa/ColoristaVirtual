@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../../lib/supabase';
-import { useSession } from '../../components/auth/SessionProvider';
+// ✅ CORREÇÃO: Usar useAuthStore ao invés de useSession
+import { useAuthStore } from '../../store/authStore';
 
 interface AuthPageProps {
   mode: 'login' | 'signup';
@@ -11,15 +12,19 @@ interface AuthPageProps {
 
 const AuthPage = ({ mode }: AuthPageProps) => {
   const navigate = useNavigate();
-  const { session, loading } = useSession();
+  // ✅ CORREÇÃO: Substituído useSession por useAuthStore
+  const { isAuthenticated, user, isLoading } = useAuthStore();
 
   useEffect(() => {
-    if (session) {
+    // ✅ CORREÇÃO: Usar isAuthenticated e user ao invés de session
+    if (isAuthenticated && user) {
+      console.log('✅ AuthPage: Usuário já logado, redirecionando para dashboard...');
       navigate('/dashboard', { replace: true });
     }
-  }, [session, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
-  if (loading) {
+  // ✅ CORREÇÃO: Usar isLoading ao invés de loading
+  if (isLoading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -27,7 +32,8 @@ const AuthPage = ({ mode }: AuthPageProps) => {
     );
   }
 
-  if (session) {
+  // ✅ CORREÇÃO: Usar isAuthenticated e user ao invés de session
+  if (isAuthenticated && user) {
     return null;
   }
 
@@ -44,7 +50,6 @@ const AuthPage = ({ mode }: AuthPageProps) => {
               : 'Cadastre-se para acessar todas as ferramentas'}
           </p>
         </div>
-
         <Auth
           supabaseClient={supabase}
           appearance={{
