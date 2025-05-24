@@ -4,11 +4,12 @@ import { Menu, X, User, LogOut, Award, Home, Palette, FlaskConical, Image, BarCh
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
-import { useAuthStore } from '../../store/authStore';
+import { useSession } from '../auth/SessionProvider';
+import { supabase } from '../../lib/supabase';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { session } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,9 +21,9 @@ const Header: React.FC = () => {
     setIsMenuOpen(false);
   };
   
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
     closeMenu();
   };
   
@@ -73,17 +74,17 @@ const Header: React.FC = () => {
           
           {/* User Menu or Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+            {session ? (
               <div className="flex items-center space-x-4">
                 <Link to="/perfil" className="flex items-center">
                   <Avatar
-                    src={user?.photoUrl}
-                    name={user?.name}
+                    src={session.user?.user_metadata?.avatar_url}
+                    name={session.user?.user_metadata?.full_name || session.user?.email}
                     size="sm"
                     className="mr-2"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {user?.name.split(' ')[0]}
+                    {session.user?.user_metadata?.full_name?.split(' ')[0] || 'Perfil'}
                   </span>
                 </Link>
                 <Button
@@ -160,7 +161,7 @@ const Header: React.FC = () => {
                 </Link>
               ))}
               
-              {isAuthenticated ? (
+              {session ? (
                 <>
                   <Link
                     to="/perfil"
