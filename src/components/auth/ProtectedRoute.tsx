@@ -1,19 +1,22 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useSession } from './SessionProvider';
 
 interface ProtectedRouteProps {
-  isAuthenticated: boolean;
   children: React.ReactNode;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  isAuthenticated, 
-  children 
-}) => {
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  const { session, loading } = useSession();
+  const location = useLocation();
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
-  
+
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   return <>{children}</>;
 };
 
