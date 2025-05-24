@@ -16,6 +16,11 @@ interface AuthState {
   resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 3000; // 3 seconds
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
@@ -33,19 +38,39 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (authError) throw authError;
       
       if (authUser) {
-        const { data: userData, error: userError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-          
-        if (userError) throw userError;
+        // Try to get user profile with retries
+        let userData = null;
+        let attempts = 0;
         
-        set({ 
-          user: userData,
-          isAuthenticated: true,
-          isLoading: false 
-        });
+        while (attempts < MAX_RETRIES && !userData) {
+          console.log(`Attempting to fetch user profile (attempt ${attempts + 1})`);
+          
+          const { data, error: userError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
+            
+          if (!userError && data) {
+            userData = data;
+            break;
+          }
+          
+          attempts++;
+          if (attempts < MAX_RETRIES) {
+            await sleep(RETRY_DELAY);
+          }
+        }
+        
+        if (userData) {
+          set({ 
+            user: userData,
+            isAuthenticated: true,
+            isLoading: false 
+          });
+        } else {
+          throw new Error('Não foi possível recuperar os dados do usuário');
+        }
       }
     } catch (error) {
       set({ 
@@ -84,6 +109,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (name: string, email: string, phone: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
+      console.log('Starting user registration...');
+      
       // Sign up with Supabase Auth
       const { data: { user: authUser }, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -102,28 +129,59 @@ export const useAuthStore = create<AuthState>((set) => ({
         throw new Error('Erro ao criar usuário');
       }
       
-      // Wait for the trigger to create the user record
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('User registered successfully, waiting for profile creation...');
       
-      // Get the created user data
-      const { data: userData, error: userError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+      // Try to get user profile with retries
+      let userData = null;
+      let attempts = 0;
+      
+      while (attempts < MAX_RETRIES && !userData) {
+        console.log(`Attempting to fetch user profile (attempt ${attempts + 1})`);
         
-      if (userError) throw userError;
-      
-      if (!userData) {
-        throw new Error('Erro ao recuperar dados do usuário');
+        // Wait before trying to fetch the profile
+        await sleep(RETRY_DELAY);
+        
+        const { data, error: userError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+          
+        if (!userError && data) {
+          userData = data;
+          console.log('User profile found:', data);
+          break;
+        }
+        
+        attempts++;
       }
       
-      set({ 
-        user: userData,
-        isAuthenticated: true,
-        isLoading: false 
-      });
+      if (userData) {
+        set({ 
+          user: userData,
+          isAuthenticated: true,
+          isLoading: false 
+        });
+        console.log('Registration complete, user logged in');
+      } else {
+        // Even if we couldn't get the profile, consider the user registered
+        console.log('Could not fetch profile, but registration was successful');
+        set({ 
+          user: {
+            id: authUser.id,
+            name,
+            email,
+            phone,
+            points: 0,
+            badges: [],
+            createdAt: new Date(),
+          },
+          isAuthenticated: true,
+          isLoading: false 
+        });
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Erro durante o registro', 
         isLoading: false,
@@ -196,13 +254,31 @@ export const useAuthStore = create<AuthState>((set) => ({
 // Set up auth state change listener
 supabase.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session?.user) {
-    const { data: userData, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+    // Try to get user profile with retries
+    let attempts = 0;
+    let userData = null;
+    
+    while (attempts < MAX_RETRIES && !userData) {
+      console.log(`Auth state change: attempting to fetch user profile (attempt ${attempts + 1})`);
       
-    if (!error && userData) {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (!error && data) {
+        userData = data;
+        break;
+      }
+      
+      attempts++;
+      if (attempts < MAX_RETRIES) {
+        await sleep(RETRY_DELAY);
+      }
+    }
+    
+    if (userData) {
       useAuthStore.setState({ 
         user: userData,
         isAuthenticated: true 
